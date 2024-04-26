@@ -1,0 +1,55 @@
+import numpy as np
+
+class NeuralNetwork:
+    def __init__(self, layers):
+        self.weights = [np.random.rand(layers[i], layers[i+1]) for i in range(len(layers)-1)]
+        self.biases = [np.random.rand(1, layers[i+1]) for i in range(len(layers)-1)]
+        
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+    
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
+    
+    def feedforward(self, inputs):
+        activations = inputs
+        for weight, bias in zip(self.weights, self.biases):
+            activations = self.sigmoid(np.dot(activations, weight) + bias)
+        return activations
+    
+    def backpropagate(self, inputs, targets, learning_rate):
+        layer_activations = [inputs]
+        for weight, bias in zip(self.weights, self.biases):
+            layer_outputs = np.dot(layer_activations[-1], weight) + bias
+            layer_activations.append(self.sigmoid(layer_outputs))
+        
+        errors = [targets - layer_activations[-1]]
+        deltas = [errors[0] * self.sigmoid_derivative(layer_activations[-1])]
+        
+        for i in range(len(self.weights) - 1, 0, -1):
+            errors.append(deltas[-1].dot(self.weights[i].T))
+            deltas.append(errors[-1] * self.sigmoid_derivative(layer_activations[i]))
+        
+        deltas.reverse()
+        
+        for i in range(len(self.weights)):
+            self.weights[i] += layer_activations[i].T.dot(deltas[i]) * learning_rate
+            self.biases[i] += np.sum(deltas[i], axis=0) * learning_rate
+    
+    def train(self, inputs, targets, epochs, learning_rate):
+        for _ in range(epochs):
+            for inp, target in zip(inputs, targets):
+                self.backpropagate(inp.reshape(1, -1), target.reshape(1, -1), learning_rate)
+    
+    def predict(self, inputs):
+        return [self.feedforward(inp.reshape(1, -1)) for inp in inputs]
+
+# Example usage:
+if __name__ == "__main__":
+    nn = NeuralNetwork(layers=[2, 3, 1])
+    inputs = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+    targets = np.array([[0], [1], [1], [0]])
+    nn.train(inputs, targets, epochs=1000, learning_rate=0.1)
+    print("Predictions after training:")
+    for inp in inputs:
+        print(f"Input: {inp}, Predicted: {nn.predict([inp])[0]}")
